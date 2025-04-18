@@ -1,9 +1,5 @@
 # Large files
+*.pkl
+venv/
 data/Real_Estate_Sales_2001-2021_GL.csv
 data/realtor-data.zip.csv
-extracted_pdf_texts.pkl
-processed_chunks.pkl
-venv/
-__pycache__/
-*.pyc
-.DS_Store
