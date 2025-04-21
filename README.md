@@ -1,6 +1,6 @@
 # RealEstateLLM
 
-Steps to run:
+Steps to run (put these commands in your terminal):
 
 1. python main.py --process --force
 2. python main.py --embeddings
