@@ -319,10 +319,9 @@ def start_chatbot():
 
     # Check if necessary files exist
     text_embeddings_exists = os.path.exists("text_embeddings.pkl")
-    structured_embeddings_exists = os.path.exists("structured_embeddings.pkl")
 
-    if not text_embeddings_exists or not structured_embeddings_exists:
-        print("Required embedding files not found. Please run --embeddings first.")
+    if not text_embeddings_exists:
+        print("Required text embeddings file not found. Please run --embeddings first.")
         return
 
     # Initialize RAG system

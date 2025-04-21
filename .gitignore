@@ -4,3 +4,6 @@
 data/Real_Estate_Sales_2001-2021_GL.csv
 data/realtor-data.zip.csv
 venv
+.idea
+data
+__pycache__
