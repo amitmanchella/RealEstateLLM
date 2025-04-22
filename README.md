@@ -10,6 +10,6 @@ Steps to run (put these commands in your terminal):
 6. `python main.py --chat`
 
 If you want to generate data for fine-tuning an LLM:
-   python main.py --finetune
+1. `python main.py --finetune`
 
 USE `python3` if `python` is not working.
