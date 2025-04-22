@@ -1,0 +1,114 @@
+.real-estate-advisor-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 350px;
+  max-height: 500px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  font-family: Arial, sans-serif;
+}
+
+.real-estate-advisor-header {
+  padding: 12px 16px;
+  background-color: #1a73e8;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: move;
+}
+
+.real-estate-advisor-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.real-estate-advisor-controls button {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  margin-left: 8px;
+  font-size: 14px;
+}
+
+.real-estate-advisor-chat {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background-color: #f8f9fa;
+}
+
+.real-estate-advisor-message {
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 18px;
+  line-height: 1.4;
+  font-size: 13px;
+}
+
+.real-estate-advisor-user {
+  align-self: flex-end;
+  background-color: #e2f2ff;
+  color: #1a73e8;
+}
+
+.real-estate-advisor-bot {
+  align-self: flex-start;
+  background-color: #f1f3f4;
+  color: #3c4043;
+}
+
+.real-estate-advisor-input {
+  display: flex;
+  padding: 8px;
+  border-top: 1px solid #dadce0;
+}
+
+.real-estate-advisor-input input {
+  flex-grow: 1;
+  border: 1px solid #dadce0;
+  border-radius: 18px;
+  padding: 8px 12px;
+  font-size: 13px;
+  outline: none;
+}
+
+.real-estate-advisor-input button {
+  background-color: #1a73e8;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  margin-left: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.real-estate-advisor-collapsed {
+  width: 48px;
+  height: 48px;
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+.real-estate-advisor-collapsed .real-estate-advisor-chat,
+.real-estate-advisor-collapsed .real-estate-advisor-input,
+.real-estate-advisor-collapsed .real-estate-advisor-title,
+.real-estate-advisor-collapsed .real-estate-advisor-minimize {
+  display: none;
+}
