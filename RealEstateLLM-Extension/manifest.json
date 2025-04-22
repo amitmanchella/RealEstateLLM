@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "RealEstate Advisor",
+  "version": "1.0",
+  "description": "Real estate knowledge assistant that appears on property listing sites",
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": [
+    "*://*.zillow.com/*",
+    "*://*.redfin.com/*",
+    "*://*.realtor.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.zillow.com/*",
+        "*://*.redfin.com/*",
+        "*://*.realtor.com/*"
+      ],
+      "js": ["scripts/content.js"],
+      "css": ["styles/overlay.css"]
+    }
+  ],
+  "background": {
+    "service_worker": "scripts/background.js"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
