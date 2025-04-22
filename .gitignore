@@ -7,3 +7,4 @@ venv
 .idea
 data
 __pycache__
+fine_tuning_data
