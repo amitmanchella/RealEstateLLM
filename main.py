@@ -65,6 +65,15 @@ def clean_text(text):
 
     # Clean up page numbers and headers/footers (common in PDFs)
     text = re.sub(r'\n\s*\d+\s*\n', '\n', text)  # Standalone page numbers
+    text = re.sub(r'\n\s*Page\s+\d+\s*\n', '\n', text)  # Page indicators
+    text = re.sub(r'\n\s*[Pp]age\s*\n', '\n', text)  # More page indicators
+
+    # Remove common PDF artifacts
+    text = re.sub(r'(?:\n|^)\s*([ivx]+|[IVX]+)\s*(?:\n|$)', '\n', text)  # Roman numerals
+    text = re.sub(r'(?:\n|^)\s*(\d+\.\d+\.\d+)\s*(?:\n|$)', '\n', text)  # Document section numbers
+
+    # Remove document reference numbers
+    text = re.sub(r'\b([A-Z]{2,}\d+)\b', '', text)
 
     # Remove URLs
     text = re.sub(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', '', text)
@@ -73,45 +82,76 @@ def clean_text(text):
 
 
 def chunk_text(text, chunk_size=1000, overlap=100):
-    """Split text into overlapping chunks of approximately chunk_size characters."""
+    """Split text into overlapping chunks that preserve semantic units."""
     if len(text) <= chunk_size:
         return [text]
 
+    # Look for section headers to use as better breaking points
+    section_pattern = re.compile(r'(?:\n|^)\s*([A-Z][A-Za-z\s]{2,}:|\d+\.\s+[A-Z]|\d+\s+[A-Z]|[A-Z][A-Z\s]+\n)')
+    section_matches = list(section_pattern.finditer(text))
+    
     chunks = []
-    start = 0
-
-    # Add timeout protection
-    max_iterations = (len(text) // (chunk_size - overlap)) * 2  # Generous upper bound
-    iteration = 0
-
-    while start < len(text) and iteration < max_iterations:
-        iteration += 1
-        end = min(start + chunk_size, len(text))
-
-        # Limit the search window for breaking points to improve performance
-        search_start = max(start, end - 200)
-
-        # Try to find a good breaking point (end of sentence or paragraph)
-        if end < len(text):
-            # Look for paragraph break first (limit search range)
-            paragraph_break = text.rfind('\n\n', search_start, end)
-            if paragraph_break != -1:
-                end = paragraph_break
-            else:
-                # Look for sentence break (use a simpler, faster approach)
-                for marker in ['. ', '! ', '? ']:
-                    sentence_break = text.rfind(marker, search_start, end)
-                    if sentence_break != -1:
-                        end = sentence_break + 2  # +2 to include the punctuation and space
-                        break
-
-        # Make sure we're making progress
-        if end <= start:
-            end = start + chunk_size  # Force progress if no break point found
-
-        chunks.append(text[start:end].strip())
-        start = end - overlap  # Create overlap between chunks
-
+    current_pos = 0
+    
+    # Process text section by section when possible
+    for i in range(len(section_matches)):
+        section_start = section_matches[i].start()
+        
+        # Determine section end (next section or end of text)
+        if i < len(section_matches) - 1:
+            section_end = section_matches[i+1].start()
+        else:
+            section_end = len(text)
+        
+        # If section is too large, apply internal chunking
+        section_text = text[section_start:section_end]
+        if len(section_text) > chunk_size * 1.5:
+            # Split into paragraphs first
+            paragraphs = [p for p in section_text.split('\n\n') if p.strip()]
+            current_chunk = ""
+            
+            for para in paragraphs:
+                if len(current_chunk) + len(para) < chunk_size:
+                    current_chunk += para + "\n\n"
+                else:
+                    # If current chunk has content, add it
+                    if current_chunk:
+                        chunks.append(current_chunk.strip())
+                    # Start new chunk with overlap
+                    overlap_text = current_chunk[-overlap:] if current_chunk else ""
+                    current_chunk = overlap_text + para + "\n\n"
+            
+            # Add the last chunk if it has content
+            if current_chunk:
+                chunks.append(current_chunk.strip())
+        else:
+            # Add the entire section as one chunk
+            chunks.append(section_text.strip())
+    
+    # If no chunks were created (no good section breaks found)
+    if not chunks:
+        # Fall back to simpler chunking method
+        start = 0
+        while start < len(text):
+            end = min(start + chunk_size, len(text))
+            
+            # Find a good breaking point
+            if end < len(text):
+                # Look for paragraph breaks
+                paragraph_break = text.rfind('\n\n', start, end)
+                if paragraph_break != -1:
+                    end = paragraph_break
+                else:
+                    # Look for sentence breaks
+                    for marker in ['. ', '! ', '? ']:
+                        sentence_break = text.rfind(marker, start, end)
+                        if sentence_break != -1:
+                            end = sentence_break + 2
+                            break
+            
+            chunks.append(text[start:end].strip())
+            start = max(start + chunk_size - overlap, end)
+    
     return chunks
 
 

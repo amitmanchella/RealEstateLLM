@@ -80,19 +80,199 @@ class RealEstateChatbot:
                     structured_files.append(source)
                     self.last_structured_data_file = source
 
-        # Format response based on query type
+        # Generate raw response
         if self.last_query_type == "structured":
-            response = self._format_structured_response(retrieval_results, structured_files)
+            raw_response = self._format_structured_response(retrieval_results, structured_files)
         else:
-            response = self._format_text_response(retrieval_results)
+            raw_response = self._format_text_response(retrieval_results)
 
+        # Apply the enhanced response formatting
+        formatted_response = self.format_response(raw_response, query)
+        
         # Add the response to conversation history
-        self.conversation_history.append({"role": "assistant", "content": response})
+        self.conversation_history.append({"role": "assistant", "content": formatted_response})
 
+        return formatted_response
+    
+    def format_response(self, raw_response, query):
+        """Format the raw response to be more organized and readable."""
+        # Identify query patterns for better formatting
+        list_type_keywords = ['benefits', 'advantages', 'features', 'reasons', 'requirements']
+        is_list_type = any(keyword in query.lower() for keyword in list_type_keywords)
+        
+        # Check if this is a definition query
+        definition_query = query.lower().startswith(('what is', 'what are', 'who is', 'how does', 'define'))
+        
+        # Extract sources
+        sources = []
+        if 'Sources:' in raw_response:
+            sources_section = raw_response.split('Sources:')[-1].strip()
+            sources = [s.strip() for s in sources_section.split(',')]
+        
+        # Clean up the text by removing document artifacts
+        cleaned_text = re.sub(r'From [^:]+\.pdf:', '', raw_response)
+        cleaned_text = re.sub(r'\s*\.{3,}\s*', ' ', cleaned_text)  # Remove ellipses
+        cleaned_text = re.sub(r'\n{3,}', '\n\n', cleaned_text)     # Fix excessive newlines
+        
+        # Split text into sentences
+        sentences = re.split(r'(?<=[.!?])\s+', cleaned_text)
+        sentences = [s.strip() for s in sentences if 20 < len(s.strip()) < 300]  # Filter out overly short/long sentences
+        
+        # For definition queries: what is X?
+        if definition_query:
+            # First try finding explicit definitions with patterns like "X is..." or "X are..."
+            query_terms = [term.lower() for term in query.split() if len(term) > 2 and term not in ['what', 'is', 'are', 'the', 'and', 'for', 'with']]
+            
+            # Try finding the most relevant definition
+            definition_sentences = []
+            for sentence in sentences:
+                # Look for pattern: "X is/are Y" or similar
+                if any(term in sentence.lower() for term in query_terms) and re.search(r'\b(is|are)\b', sentence.lower()):
+                    # Give higher weight to sentences that explicitly answer the query
+                    definition_sentences.append(sentence)
+            
+            if definition_sentences:
+                # Use the first definition found
+                response = definition_sentences[0]
+                
+                # Add one more relevant detail if available
+                if len(definition_sentences) > 1:
+                    response += f"\n\n{definition_sentences[1]}"
+                
+                # Add sources
+                if sources:
+                    response += f"\n\nSources: {', '.join(sources)}"
+                
+                return response
+            
+            # Fallback to most relevant sentences containing query terms
+            relevant_sentences = []
+            for sentence in sentences:
+                if any(term in sentence.lower() for term in query_terms):
+                    relevant_sentences.append(sentence)
+            
+            if relevant_sentences:
+                response = relevant_sentences[0]
+                if len(relevant_sentences) > 1:
+                    response += f"\n\n{relevant_sentences[1]}"
+                    
+                # Add sources
+                if sources:
+                    response += f"\n\nSources: {', '.join(sources)}"
+                    
+                return response
+        
+        # For list-type queries: what are the benefits of X?
+        if is_list_type or any(pattern in query.lower() for pattern in ['what are', 'tell me about', 'list', 'explain']):
+            # Try to identify bullet points
+            bullet_points = []
+            
+            # First look for explicit bullet patterns
+            bullet_patterns = re.findall(r'(?:^|\n)(?:[-•*]\s*|\d+[.)\]]\s*)([^\n]+)', cleaned_text)
+            if bullet_patterns:
+                bullet_points = bullet_patterns
+            else:
+                # Extract sentences that could be list items from relevant parts
+                query_terms = [term.lower() for term in query.split() if len(term) > 2 and term not in ['what', 'are', 'the', 'benefits', 'advantages', 'features', 'of']]
+                
+                for sentence in sentences:
+                    # Only include relevant sentences that might be standalone points
+                    if any(term in sentence.lower() for term in query_terms) and len(sentence) < 200:
+                        # Avoid sentences that look like they're part of an explanation rather than a point
+                        if not any(sentence.lower().startswith(word) for word in ['the', 'this', 'from', 'it', 'they']):
+                            bullet_points.append(sentence)
+            
+            # Format and deduplicate the bullet points
+            seen = set()
+            unique_points = []
+            
+            for point in bullet_points:
+                # Normalize for deduplication comparison
+                point_key = re.sub(r'\W+', '', point.lower())[:30]
+                
+                if point_key not in seen and len(point) > 15:
+                    seen.add(point_key)
+                    
+                    # Clean up the point
+                    clean_point = re.sub(r'^[,;:\s]+', '', point)
+                    
+                    # Ensure proper capitalization and ending
+                    if clean_point:
+                        clean_point = clean_point[0].upper() + clean_point[1:]
+                        if not clean_point.endswith(('.', '!', '?')):
+                            clean_point += '.'
+                        unique_points.append(clean_point)
+            
+            # Format as bullet list if we found valid points
+            if unique_points:
+                response = ""
+                
+                for point in unique_points:
+                    response += f"• {point}\n"
+                    
+                # Add sources
+                if sources:
+                    response += f"\nSources: {', '.join(sources)}"
+                    
+                return response
+        
+        # For general queries - extract relevant paragraphs
+        query_terms = [term.lower() for term in query.split() if len(term) > 2 and term not in ['what', 'is', 'are', 'the', 'and', 'for', 'with', 'about']]
+        
+        # Try to extract relevant paragraphs
+        paragraphs = [p.strip() for p in cleaned_text.split('\n\n') if p.strip()]
+        relevant_paragraphs = []
+        
+        for paragraph in paragraphs:
+            if any(term in paragraph.lower() for term in query_terms):
+                # Truncate very long paragraphs
+                if len(paragraph) > 300:
+                    # Find a good breaking point
+                    for sentence_end in ['.', '!', '?']:
+                        pos = paragraph.rfind(sentence_end, 0, 300)
+                        if pos != -1:
+                            paragraph = paragraph[:pos+1]
+                            break
+                
+                # Don't add paragraphs that are just citations or headers
+                if len(paragraph) > 30:
+                    relevant_paragraphs.append(paragraph)
+        
+        # Format the response
+        if relevant_paragraphs:
+            # Use only the first 1-2 most relevant paragraphs
+            response = relevant_paragraphs[0]
+            
+            # Add one more paragraph if available and not too long
+            if len(relevant_paragraphs) > 1 and len(response) + len(relevant_paragraphs[1]) < 500:
+                response += f"\n\n{relevant_paragraphs[1]}"
+        else:
+            # Fallback to the most relevant sentences if we couldn't find good paragraphs
+            relevant_sentences = [s for s in sentences if any(term in s.lower() for term in query_terms)]
+            
+            if relevant_sentences:
+                response = relevant_sentences[0]
+                
+                # Add a few more sentences if available
+                additional = []
+                for s in relevant_sentences[1:3]:
+                    if s not in response:
+                        additional.append(s)
+                
+                if additional:
+                    response += "\n\n" + " ".join(additional)
+            else:
+                # Absolute fallback - just return a cleaned-up version of the first part of the text
+                response = sentences[0] if sentences else "I couldn't find a clear answer to your question."
+        
+        # Add sources
+        if sources:
+            response += f"\n\nSources: {', '.join(sources)}"
+        
         return response
 
     def _format_text_response(self, retrieval_results):
-        """Format response for text-based queries."""
+        """Format raw response for text-based queries."""
         response = "Based on the real estate documents I've analyzed:\n\n"
 
         # Group by source file for better organization
@@ -106,11 +286,9 @@ class RealEstateChatbot:
         # Build response from each source
         for source, texts in by_source.items():
             response += f"From {source}:\n"
-
-            # Join and truncate content from this source
+            # Join content from this source - preserve full content for formatting
             combined_text = "\n".join(texts)
-            truncated = combined_text[:500] + "..." if len(combined_text) > 500 else combined_text
-            response += f"{truncated}\n\n"
+            response += f"{combined_text}\n\n"
 
         # Add sources
         sources = list(by_source.keys())
@@ -387,4 +565,10 @@ class RealEstateChatbot:
                 break
 
             answer = self.answer(query, show_context=False)
-            print(f"\nRealEstateGPT: {answer}\n")
+            
+            # Display with proper line breaks
+            print("\nRealEstateGPT:")
+            for line in answer.split('\n'):
+                print(f"  {line}")
+            print()
+            
