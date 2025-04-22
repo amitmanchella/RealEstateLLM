@@ -8,6 +8,9 @@ Steps to run (put these commands in your terminal) :
 5. `python main.py --embeddings`
 6. `python main.py --chat`
 
+To exit chatbot:
+1. `exit`
+
 If you want to generate data for fine-tuning an LLM (after running till 5 above) :
 1. `python main.py --finetune`
 
