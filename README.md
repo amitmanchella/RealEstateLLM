@@ -1,6 +1,6 @@
 # RealEstateLLM
 
-Steps to run (put these commands in your terminal):
+Steps to run (put these commands in your terminal) :
 
 1. `python -m venv venv`
 2. `source venv/bin/activate`
@@ -9,7 +9,7 @@ Steps to run (put these commands in your terminal):
 5. `python main.py --embeddings`
 6. `python main.py --chat`
 
-If you want to generate data for fine-tuning an LLM:
+If you want to generate data for fine-tuning an LLM (after running till 5 above) :
 1. `python main.py --finetune`
 
 USE `python3` if `python` is not working.
